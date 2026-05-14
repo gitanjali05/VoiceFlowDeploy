@@ -1,4 +1,6 @@
+import json
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,6 +18,79 @@ DEFAULT_RESPONSE = "I'm sorry, I couldn't process that. Please try again."
 
 app = Flask(__name__)
 CORS(app)
+
+EMOTIONS = {"angry", "disgusted", "fearful", "happy", "neutral", "sad", "surprised"}
+EMOTION_LABEL_MAP = {
+    "anger": "angry",
+    "angry": "angry",
+    "disgust": "disgusted",
+    "disgusted": "disgusted",
+    "fear": "fearful",
+    "fearful": "fearful",
+    "joy": "happy",
+    "happy": "happy",
+    "neutral": "neutral",
+    "sadness": "sad",
+    "sad": "sad",
+    "surprise": "surprised",
+    "surprised": "surprised",
+}
+
+
+# Extracts plain text from an OpenAI Responses API result.
+def extract_openai_text(response):
+    output_text = getattr(response, "output_text", "")
+    if output_text:
+        return output_text.strip()
+
+    pieces = []
+    for item in getattr(response, "output", []) or []:
+        for content in getattr(item, "content", []) or []:
+            text = getattr(content, "text", None)
+            if text:
+                pieces.append(text)
+
+    return " ".join(pieces).strip()
+
+
+# Uses OpenAI as a lightweight web fallback if the local detector cannot run on Render.
+def fallback_detect_emotion(filepath, original_error):
+    from respond import get_client
+
+    client = get_client()
+    with open(filepath, "rb") as audio_file:
+        transcript_result = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file,
+        )
+
+    transcript = str(getattr(transcript_result, "text", "") or "").strip()
+    prompt = (
+        "Classify the speaker's emotion from this transcript and likely vocal context.\n\n"
+        f"Transcript: \"{transcript}\"\n\n"
+        "Allowed emotions: angry, disgusted, fearful, happy, neutral, sad, surprised.\n"
+        "Return JSON only in this exact shape:\n"
+        '{"emotion":"angry","confidence":0.85}'
+    )
+
+    response = client.responses.create(
+        model=os.getenv("OPENAI_RESPONSE_MODEL", "gpt-4o"),
+        input=prompt,
+        max_output_tokens=120,
+    )
+    raw_text = extract_openai_text(response)
+    match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+    data = json.loads(match.group(0) if match else raw_text)
+
+    emotion = EMOTION_LABEL_MAP.get(str(data.get("emotion", "neutral")).lower(), "neutral")
+    confidence = max(0.0, min(1.0, float(data.get("confidence", 0.5))))
+
+    print(f"Local detector failed, used OpenAI fallback: {original_error}")
+    return {
+        "emotion": emotion,
+        "confidence": confidence,
+        "transcript": transcript,
+    }
 
 
 # Builds a local fallback reply if the OpenAI response call fails.
@@ -59,10 +134,16 @@ def analyze():
         audio_file = request.files["audio"]
         audio_file.save(TEMP_AUDIO_FILE)
 
-        from detect_emotion import detect_emotion
         from respond import generate_response
 
-        emotion_result = detect_emotion(str(TEMP_AUDIO_FILE))
+        try:
+            from detect_emotion import detect_emotion
+
+            emotion_result = detect_emotion(str(TEMP_AUDIO_FILE))
+        except Exception as detector_error:
+            print(f"Local emotion detection failed: {detector_error}")
+            emotion_result = fallback_detect_emotion(str(TEMP_AUDIO_FILE), detector_error)
+
         try:
             response_text = generate_response(emotion_result)
         except Exception as error:
@@ -81,10 +162,10 @@ def analyze():
         return (
             jsonify(
                 {
-                    "error": "something went wrong",
+                    "error": str(error),
                     "emotion": "neutral",
                     "confidence": 0.0,
-                    "response": DEFAULT_RESPONSE,
+                    "response": f"Could not analyze recording: {error}",
                 }
             ),
             500,
