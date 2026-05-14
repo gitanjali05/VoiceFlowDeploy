@@ -4,6 +4,7 @@ python-dotenv
 openai
 funasr
 openai-whisper
+gunicorn
 sounddevice
 soundfile
 transformers
