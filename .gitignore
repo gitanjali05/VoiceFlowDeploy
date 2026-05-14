@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+.cache/
+pretrained_models/
+wav2vec2_checkpoints/
+test_samples/
+outputs/
+*.wav
+*.mp3
+results.json
+.DS_Store

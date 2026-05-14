@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceFlow Emotion Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --violet: #7c3aed;
+      --red: #ef4444;
+      --green: #22c55e;
+      --text: #f0f6fc;
+      --muted: #8b949e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(124, 58, 237, 0.16), transparent 34%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 34px 0 48px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 72px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .settings {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(22, 27, 34, 0.82);
+      color: var(--muted);
+      font-size: 22px;
+      user-select: none;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 26px;
+      margin-bottom: 24px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 18px rgba(34, 197, 94, 0.55);
+    }
+
+    .status.recording .status-dot {
+      background: var(--red);
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.6);
+    }
+
+    .status.processing .status-dot {
+      background: var(--violet);
+      box-shadow: 0 0 18px rgba(124, 58, 237, 0.65);
+    }
+
+    .mic-button {
+      width: 190px;
+      height: 190px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(124, 58, 237, 0.55);
+      border-radius: 34px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+        var(--card);
+      box-shadow:
+        0 0 54px rgba(124, 58, 237, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      font-size: 70px;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    .mic-icon {
+      width: 76px;
+      height: 76px;
+      stroke: currentColor;
+      filter: drop-shadow(0 0 18px rgba(124, 58, 237, 0.38));
+    }
+
+    .mic-button.recording {
+      border-color: rgba(239, 68, 68, 0.8);
+      box-shadow: 0 0 72px rgba(239, 68, 68, 0.48);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    .mic-button.processing {
+      border-color: rgba(124, 58, 237, 0.9);
+      box-shadow: 0 0 78px rgba(124, 58, 237, 0.52);
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.045);
+      }
+    }
+
+    .waveform {
+      height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 36px 0 28px;
+    }
+
+    .bar {
+      width: 7px;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #a78bfa, var(--violet));
+      opacity: 0.72;
+      transition: height 140ms ease, opacity 140ms ease;
+    }
+
+    .waveform.recording .bar {
+      animation: wave 900ms ease-in-out infinite;
+      opacity: 1;
+    }
+
+    .waveform.recording .bar:nth-child(2n) {
+      animation-delay: 90ms;
+    }
+
+    .waveform.recording .bar:nth-child(3n) {
+      animation-delay: 180ms;
+    }
+
+    .waveform.recording .bar:nth-child(4n) {
+      animation-delay: 270ms;
+    }
+
+    .voice-meter {
+      width: min(420px, 84vw);
+      margin: -8px auto 34px;
+      display: grid;
+      gap: 9px;
+    }
+
+    .voice-meter-track {
+      height: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #0b0f15;
+    }
+
+    .voice-meter-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), #a78bfa, var(--violet));
+      box-shadow: 0 0 22px rgba(124, 58, 237, 0.45);
+      transition: width 90ms ease;
+    }
+
+    .voice-meter-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    @keyframes wave {
+      0%, 100% {
+        height: 14px;
+      }
+      50% {
+        height: var(--h);
+      }
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 58px;
+    }
+
+    button {
+      min-width: 136px;
+      height: 52px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      color: var(--text);
+      font: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, opacity 160ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.48;
+    }
+
+    .start {
+      background: var(--violet);
+      box-shadow: 0 16px 36px rgba(124, 58, 237, 0.26);
+    }
+
+    .stop {
+      border-color: var(--border);
+      background: #21262d;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      min-height: 92px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(22, 27, 34, 0.9);
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.18);
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .metric {
+      color: var(--text);
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .response {
+      max-height: 48px;
+      overflow: auto;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+
+    .empty {
+      color: var(--muted);
+    }
+
+    @media (max-width: 780px) {
+      .page {
+        width: min(100% - 28px, 1120px);
+        padding-top: 24px;
+      }
+
+      header {
+        margin-bottom: 48px;
+      }
+
+      .mic-button {
+        width: 164px;
+        height: 164px;
+        font-size: 58px;
+      }
+
+      .controls {
+        width: 100%;
+      }
+
+      button {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .card {
+        min-height: 82px;
+        padding: 12px 10px;
+      }
+
+      .card h2 {
+        font-size: 10px;
+        margin-bottom: 8px;
+      }
+
+      .metric {
+        font-size: 18px;
+      }
+
+      .response {
+        max-height: 44px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="brand">
+        <h1>VoiceFlow</h1>
+        <p>Emotion Detector</p>
+      </div>
+      <div class="settings" aria-label="Settings" title="Settings">⚙</div>
+    </header>
+
+    <section class="hero" aria-label="Voice emotion recorder">
+      <div class="status ready" id="status">
+        <span class="status-dot"></span>
+        <span id="statusText">Ready to Record</span>
+      </div>
+
+      <div class="mic-button" id="micButton" aria-hidden="true">
+        <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3a3.5 3.5 0 0 0-3.5 3.5v5A3.5 3.5 0 0 0 12 15a3.5 3.5 0 0 0 3.5-3.5v-5A3.5 3.5 0 0 0 12 3Z"></path>
+          <path d="M5 10.5a7 7 0 0 0 14 0"></path>
+          <path d="M12 17.5V21"></path>
+          <path d="M8.5 21h7"></path>
+        </svg>
+      </div>
+
+      <div class="waveform" id="waveform" aria-hidden="true">
+        <span class="bar" style="--h: 42px"></span>
+        <span class="bar" style="--h: 64px"></span>
+        <span class="bar" style="--h: 34px"></span>
+        <span class="bar" style="--h: 72px"></span>
+        <span class="bar" style="--h: 50px"></span>
+        <span class="bar" style="--h: 78px"></span>
+        <span class="bar" style="--h: 38px"></span>
+        <span class="bar" style="--h: 60px"></span>
+        <span class="bar" style="--h: 46px"></span>
+        <span class="bar" style="--h: 70px"></span>
+        <span class="bar" style="--h: 32px"></span>
+        <span class="bar" style="--h: 56px"></span>
+        <span class="bar" style="--h: 74px"></span>
+        <span class="bar" style="--h: 40px"></span>
+        <span class="bar" style="--h: 62px"></span>
+        <span class="bar" style="--h: 36px"></span>
+      </div>
+
+      <div class="voice-meter" aria-label="Voice level">
+        <div class="voice-meter-track">
+          <div class="voice-meter-fill" id="voiceMeterFill"></div>
+        </div>
+        <div class="voice-meter-label">
+          <span>Soft</span>
+          <span>Loud</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="start" id="startButton" type="button">Start</button>
+        <button class="stop" id="stopButton" type="button" disabled>Stop</button>
+      </div>
+    </section>
+
+    <section class="cards" aria-label="Analysis results">
+      <article class="card">
+        <h2>Emotion</h2>
+        <div class="metric empty" id="emotionValue">—</div>
+      </article>
+
+      <article class="card">
+        <h2>Confidence</h2>
+        <div class="metric empty" id="confidenceValue">—</div>
+      </article>
+
+      <article class="card">
+        <h2>AI Response</h2>
+        <div class="response empty" id="responseValue">—</div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const statusText = document.getElementById("statusText");
+    const micButton = document.getElementById("micButton");
+    const waveform = document.getElementById("waveform");
+    const voiceMeterFill = document.getElementById("voiceMeterFill");
+    const startButton = document.getElementById("startButton");
+    const stopButton = document.getElementById("stopButton");
+    const emotionValue = document.getElementById("emotionValue");
+    const confidenceValue = document.getElementById("confidenceValue");
+    const responseValue = document.getElementById("responseValue");
+
+    let audioContext = null;
+    let audioChunks = [];
+    let activeStream = null;
+    let sourceNode = null;
+    let processorNode = null;
+    let inputSampleRate = 44100;
+
+    function updateVoiceMeter(input) {
+      let total = 0;
+      for (let i = 0; i < input.length; i += 1) {
+        total += input[i] * input[i];
+      }
+
+      const rms = Math.sqrt(total / input.length);
+      const level = Math.min(100, Math.round(rms * 520));
+      voiceMeterFill.style.width = `${level}%`;
+    }
+
+    function downsampleBuffer(buffer, inputRate, outputRate) {
+      if (outputRate === inputRate) {
+        return buffer;
+      }
+
+      const ratio = inputRate / outputRate;
+      const newLength = Math.round(buffer.length / ratio);
+      const result = new Float32Array(newLength);
+      let offsetResult = 0;
+      let offsetBuffer = 0;
+
+      while (offsetResult < result.length) {
+        const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+        let accumulator = 0;
+        let count = 0;
+
+        for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i += 1) {
+          accumulator += buffer[i];
+          count += 1;
+        }
+
+        result[offsetResult] = accumulator / Math.max(count, 1);
+        offsetResult += 1;
+        offsetBuffer = nextOffsetBuffer;
+      }
+
+      return result;
+    }
+
+    function encodeWav(samples, sampleRate) {
+      const bytesPerSample = 2;
+      const blockAlign = 1 * bytesPerSample;
+      const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
+      const view = new DataView(buffer);
+
+      function writeString(offset, value) {
+        for (let i = 0; i < value.length; i += 1) {
+          view.setUint8(offset + i, value.charCodeAt(i));
+        }
+      }
+
+      writeString(0, "RIFF");
+      view.setUint32(4, 36 + samples.length * bytesPerSample, true);
+      writeString(8, "WAVE");
+      writeString(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * blockAlign, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, 16, true);
+      writeString(36, "data");
+      view.setUint32(40, samples.length * bytesPerSample, true);
+
+      let offset = 44;
+      for (let i = 0; i < samples.length; i += 1) {
+        const sample = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+        offset += 2;
+      }
+
+      return new Blob([view], { type: "audio/wav" });
+    }
+
+    function buildWavBlob() {
+      const length = audioChunks.reduce((total, chunk) => total + chunk.length, 0);
+      const merged = new Float32Array(length);
+      let offset = 0;
+
+      audioChunks.forEach((chunk) => {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      });
+
+      const outputSampleRate = 16000;
+      const downsampled = downsampleBuffer(merged, inputSampleRate, outputSampleRate);
+      return encodeWav(downsampled, outputSampleRate);
+    }
+
+    function setStatus(state) {
+      statusEl.className = `status ${state}`;
+      micButton.className = `mic-button ${state === "ready" ? "" : state}`;
+      waveform.classList.toggle("recording", state === "recording");
+      if (state !== "recording") {
+        voiceMeterFill.style.width = "0%";
+      }
+
+      const labels = {
+        ready: "Ready to Record",
+        recording: "Recording...",
+        processing: "Processing..."
+      };
+      statusText.textContent = labels[state];
+    }
+
+    function setLoadingState(isRecording, isProcessing = false) {
+      startButton.disabled = isRecording || isProcessing;
+      stopButton.disabled = !isRecording || isProcessing;
+    }
+
+    function setResult(data) {
+      const emotion = String(data.emotion || "").toLowerCase();
+      const confidence = typeof data.confidence === "number"
+        ? `${Math.round(data.confidence * 100)}%`
+        : "—";
+
+      emotionValue.textContent = emotion || "—";
+      confidenceValue.textContent = confidence;
+      responseValue.textContent = data.response || "—";
+
+      emotionValue.classList.toggle("empty", !emotion);
+      confidenceValue.classList.toggle("empty", confidence === "—");
+      responseValue.classList.toggle("empty", !data.response);
+    }
+
+    async function speakResponse(text) {
+      if (!text) {
+        return;
+      }
+
+      try {
+        const response = await fetch("/tts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text })
+        });
+
+        if (!response.ok) {
+          throw new Error(`TTS request failed: ${response.status}`);
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.addEventListener("ended", () => URL.revokeObjectURL(audioUrl), { once: true });
+        await audio.play();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function startRecording() {
+      try {
+        audioChunks = [];
+        activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new AudioContext();
+        inputSampleRate = audioContext.sampleRate;
+        sourceNode = audioContext.createMediaStreamSource(activeStream);
+        processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+
+        processorNode.onaudioprocess = (event) => {
+          const input = event.inputBuffer.getChannelData(0);
+          audioChunks.push(new Float32Array(input));
+          updateVoiceMeter(input);
+        };
+
+        sourceNode.connect(processorNode);
+        processorNode.connect(audioContext.destination);
+
+        setStatus("recording");
+        setLoadingState(true);
+      } catch (error) {
+        console.error(error);
+        alert("Could not access microphone. Please allow mic access in Chrome.");
+        setStatus("ready");
+        setLoadingState(false);
+      }
+    }
+
+    function stopRecording() {
+      if (!audioContext || !processorNode) {
+        return;
+      }
+
+      setStatus("processing");
+      setLoadingState(false, true);
+      processorNode.disconnect();
+      sourceNode?.disconnect();
+      activeStream?.getTracks().forEach((track) => track.stop());
+      audioContext.close();
+      audioContext = null;
+      processorNode = null;
+      sourceNode = null;
+      sendRecording();
+    }
+
+    async function sendRecording() {
+      try {
+        const audioBlob = buildWavBlob();
+        const formData = new FormData();
+        formData.append("audio", audioBlob, "recording.wav");
+
+        const response = await fetch("/analyze", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          setResult(data);
+          throw new Error(data.error || `Analyze request failed: ${response.status}`);
+        }
+
+        setResult(data);
+        speakResponse(data.response);
+      } catch (error) {
+        console.error(error);
+        if (responseValue.textContent === "—") {
+          responseValue.textContent = "Could not analyze recording. Please try again.";
+        }
+        responseValue.classList.remove("empty");
+      } finally {
+        setStatus("ready");
+        setLoadingState(false);
+      }
+    }
+
+    startButton.addEventListener("click", startRecording);
+    stopButton.addEventListener("click", stopRecording);
+    setStatus("ready");
+    setLoadingState(false);
+  </script>
+</body>
+</html>

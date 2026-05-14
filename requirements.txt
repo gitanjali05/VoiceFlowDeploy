@@ -1,0 +1,12 @@
+flask
+flask-cors
+python-dotenv
+openai
+funasr
+openai-whisper
+sounddevice
+soundfile
+transformers
+torch
+modelscope
+huggingface_hub
