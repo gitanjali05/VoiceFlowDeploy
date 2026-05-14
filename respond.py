@@ -3,10 +3,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-import numpy as np
 from openai import OpenAI
-import sounddevice as sd
-import soundfile as sf
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -198,6 +195,10 @@ def speak(text):
 
 # Records audio after ENTER starts it, then stops and saves after ENTER is pressed again.
 def record_with_enter_control():
+    import numpy as np
+    import sounddevice as sd
+    import soundfile as sf
+
     while True:
         frames = []
         recording = False
