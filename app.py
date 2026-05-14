@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -8,9 +9,6 @@ from flask_cors import CORS
 
 
 load_dotenv()
-
-from detect_emotion import detect_emotion
-from respond import create_tts_audio, generate_response
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMP_AUDIO_FILE = BASE_DIR / "temp_audio.wav"
@@ -61,6 +59,9 @@ def analyze():
         audio_file = request.files["audio"]
         audio_file.save(TEMP_AUDIO_FILE)
 
+        from detect_emotion import detect_emotion
+        from respond import generate_response
+
         emotion_result = detect_emotion(str(TEMP_AUDIO_FILE))
         try:
             response_text = generate_response(emotion_result)
@@ -102,6 +103,8 @@ def tts():
         if not text:
             raise ValueError("Missing text for TTS.")
 
+        from respond import create_tts_audio
+
         audio_bytes = create_tts_audio(text)
         return send_file(
             BytesIO(audio_bytes),
@@ -115,4 +118,5 @@ def tts():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5050, debug=True, use_reloader=False)
+    port = int(os.environ.get("PORT", 5050))
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
